@@ -81,6 +81,7 @@ SoftwareSerial SerialAT(10, 9);
 #define GSM_PIN ""
 
 // Your GPRS credentials, if any
+<<<<<<< HEAD:mqtt-tinygsm.ino
 const char apn[] = "Telkomsel";
 const char gprsUser[] = "wap";
 const char gprsPass[] = "wap123";
@@ -93,6 +94,22 @@ const char wifiPass[] = "makersmake";
 const char* broker = "161.97.179.79";
 const char* mqtt_user = "aquifera";
 const char* mqtt_pass = "Aquiferan";
+=======
+#ifndef CREDENTIALS_H
+  const char apn[] = "APN";
+  const char gprsUser[] = "APN_GPRS_USER";
+  const char gprsPass[] = "APN_GPRS_PASS";
+
+  // Your WiFi connection credentials, if applicable
+  const char wifiSSID[] = "WIFI_SSID";
+  const char wifiPass[] = "WIFI_PASS";
+
+  // MQTT details
+  const char* broker = "MQTT_BROKER_SERVER";
+  const char* mqtt_user = "MQTT_BROKER_USER";
+  const char* mqtt_pass = "MQTT_BROKER_PASS";
+#endif
+>>>>>>> 9a678fe2c79589dc1fcae5f1cfa63bc3d0180d3a:mqtt-tinygsm-ino/mqtt-tinygsm.ino
 
 const char* topicLed = "GsmClientTest/led";
 const char* topicInit = "GsmClientTest/init";
