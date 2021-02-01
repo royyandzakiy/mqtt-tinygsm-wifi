@@ -86,8 +86,8 @@ const char gprsUser[] = "wap";
 const char gprsPass[] = "wap123";
 
 // Your WiFi connection credentials, if applicable
-const char wifiSSID[] = "YourSSID";
-const char wifiPass[] = "YourWiFiPass";
+const char wifiSSID[] = "MakersHouse";
+const char wifiPass[] = "makersmake";
 
 // MQTT details
 const char* broker = "161.97.179.79";
