@@ -81,18 +81,20 @@ SoftwareSerial SerialAT(10, 9);
 #define GSM_PIN ""
 
 // Your GPRS credentials, if any
-const char apn[] = "Telkomsel";
-const char gprsUser[] = "wap";
-const char gprsPass[] = "wap123";
+#ifndef CREDENTIALS_H
+  const char apn[] = "APN";
+  const char gprsUser[] = "APN_GPRS_USER";
+  const char gprsPass[] = "APN_GPRS_PASS";
 
-// Your WiFi connection credentials, if applicable
-const char wifiSSID[] = "YourSSID";
-const char wifiPass[] = "YourWiFiPass";
+  // Your WiFi connection credentials, if applicable
+  const char wifiSSID[] = "WIFI_SSID";
+  const char wifiPass[] = "WIFI_PASS";
 
-// MQTT details
-const char* broker = "161.97.179.79";
-const char* mqtt_user = "aquifera";
-const char* mqtt_pass = "Aquiferan";
+  // MQTT details
+  const char* broker = "MQTT_BROKER_SERVER";
+  const char* mqtt_user = "MQTT_BROKER_USER";
+  const char* mqtt_pass = "MQTT_BROKER_PASS";
+#endif
 
 const char* topicLed = "GsmClientTest/led";
 const char* topicInit = "GsmClientTest/init";
