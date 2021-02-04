@@ -1,7 +1,6 @@
 // *** main.cpp ***
-#include <TinyGsmClient.h>
 #include <PubSubClient.h>
-#include <EspSoftwareSerial.h>
+#include <SoftwareSerial.h>
 #include "credentials.h"
 
 //======================================================================//
@@ -14,13 +13,6 @@
 // See all AT commands, if wanted
 #define DUMP_AT_COMMANDS
 
-// Your GPRS credentials, if any
-#ifndef CREDENTIALS_H
-  const char apn[] = "APN";
-  const char gprsUser[] = "APN_GPRS_USER";
-  const char gprsPass[] = "APN_GPRS_PASS";
-#endif
-
 // set GSM PIN, if any
 #define GSM_PIN ""
 
@@ -29,6 +21,13 @@
 
 // Software Serial to SIM800L Modem
 SoftwareSerial SerialSim800L(10, 9); // RX, TX
+
+// Your GPRS credentials, if any
+#ifndef CREDENTIALS_H
+  const char apn[] = "APN";
+  const char gprsUser[] = "APN_GPRS_USER";
+  const char gprsPass[] = "APN_GPRS_PASS";
+#endif
 
 // Define the serial console for debug prints, if needed
 #define TINY_GSM_DEBUG Serial
@@ -55,6 +54,8 @@ SoftwareSerial SerialSim800L(10, 9); // RX, TX
 #define TINY_GSM_USE_WIFI false
 #endif
 
+#include <TinyGsmClient.h>
+
 #ifdef DUMP_AT_COMMANDS
   #include <StreamDebugger.h>
   StreamDebugger debugger(SerialSim800L, Serial);
@@ -64,6 +65,10 @@ TinyGsm modem(SerialSim800L);
 #endif
 
 // ***** WIFI & MQTT CONFIGURATIONS *****
+const char* topicLed = "GsmClientTest/led";
+const char* topicInit = "GsmClientTest/init";
+const char* topicLedStatus = "GsmClientTest/ledStatus";
+
 // WIFI & MQTT Credentials
 #ifndef CREDENTIALS_H
   // Your WiFi connection credentials, if applicable
@@ -75,10 +80,6 @@ TinyGsm modem(SerialSim800L);
   const char* mqtt_user = "MQTT_BROKER_USER";
   const char* mqtt_pass = "MQTT_BROKER_PASS";
 #endif
-
-const char* topicLed = "GsmClientTest/led";
-const char* topicInit = "GsmClientTest/init";
-const char* topicLedStatus = "GsmClientTest/ledStatus";
 
 // ****** GLOBAL VARIABLES *****
 #ifdef CELLULAR_ONLY
@@ -103,6 +104,7 @@ void mqttCallback(char*, byte*, unsigned int);
 boolean mqttConnect();
 void setup_tinygsm();
 void setup_mqtt();
+void setup_wifi();
 
 //======================================================================//
 // Main
@@ -216,7 +218,7 @@ void setup_tinygsm() {
 
 // WiFi
 void setup_wifi() {
-  WiFi.begin(ssid, password);
+  WiFi.begin(wifiSSID, wifiPass);
  
   while (WiFi.status() != WL_CONNECTED) {
     delay(500);
