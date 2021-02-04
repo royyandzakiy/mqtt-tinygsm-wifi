@@ -65,9 +65,11 @@ TinyGsm modem(SerialSim800L);
 #endif
 
 // ***** WIFI & MQTT CONFIGURATIONS *****
-const char* topicLed = "GsmClientTest/led";
-const char* topicInit = "GsmClientTest/init";
-const char* topicLedStatus = "GsmClientTest/ledStatus";
+const char* topic_commands = "waterbox/W0001/commands"; // used to retrieve actions that is needed to be done by Waterbox
+const char* topic_temp_sensor = "waterbox/W0001/temp_sensor";
+const char* topic_flow_sensor = "waterbox/W0001/flow_sensor";
+const char* topic_test = "waterbox/W0001/test";
+const char* topic_test_2 = "waterbox/W0001/test-2";
 
 // WIFI & MQTT Credentials
 #ifndef CREDENTIALS_H
@@ -84,27 +86,27 @@ const char* topicLedStatus = "GsmClientTest/ledStatus";
 // ****** GLOBAL VARIABLES *****
 #ifdef CELLULAR_ONLY
   TinyGsmClient client(modem);
-#else defined(WIFI_ONLY)
+#elif defined(WIFI_ONLY)
   #include <WiFi.h>
   WiFiClient client;
 #endif
 
 PubSubClient mqtt(client);
+uint32_t lastReconnectAttempt = 999999L; // fill in  withlarge number to connect direclty at first try
 
 // ****** OTHER VARIABLES *****
 #define LED_PIN 13
 int ledStatus = LOW;
 
-uint32_t lastReconnectAttempt = 0;
-
 //======================================================================//
 // Prototypes
 
+void setup_tinygsm();
+void setup_wifi();
+void setup_mqtt();
 void mqttCallback(char*, byte*, unsigned int);
 boolean mqttConnect();
-void setup_tinygsm();
-void setup_mqtt();
-void setup_wifi();
+void publish_message(const char*, const char*);
 
 //======================================================================//
 // Main
@@ -120,7 +122,7 @@ void setup() {
 
 #ifdef CELLULAR_ONLY
   setup_tinygsm();
-#else defined(WIFI_ONLY)
+#elif defined(WIFI_ONLY)
   setup_wifi();
 #endif
   setup_mqtt();
@@ -128,10 +130,10 @@ void setup() {
 
 void loop() {
   if (!mqtt.connected()) {
-    Serial.println("=== MQTT NOT CONNECTED ===");
     // Reconnect every 10 seconds
     uint32_t t = millis();
     if (t - lastReconnectAttempt > 10000L) {
+      Serial.println("=== MQTT NOT CONNECTED ===");
       lastReconnectAttempt = t;
       if (mqttConnect()) {
         lastReconnectAttempt = 0;
@@ -222,15 +224,19 @@ void setup_wifi() {
  
   while (WiFi.status() != WL_CONNECTED) {
     delay(500);
-    Serial.println("Connecting to WiFi..");
+    Serial.print("Connecting to WiFi: ");
+    Serial.println(wifiSSID);
   }
+  Serial.println("WiFi Connected!");
 }
 
 // MQTT
 void setup_mqtt() {
   // MQTT Broker setup
+  Serial.print("Setup mqtt");
   mqtt.setServer(broker, 1883);
   mqtt.setCallback(mqttCallback);
+  Serial.println(" ...done");
 }
 
 void mqttCallback(char* topic, byte* payload, unsigned int len) {
@@ -239,31 +245,58 @@ void mqttCallback(char* topic, byte* payload, unsigned int len) {
   Serial.print("]: ");
   Serial.write(payload, len);
   Serial.println();
-
-  // Only proceed if incoming message's topic matches
-  if (String(topic) == topicLed) {
-    ledStatus = !ledStatus;
-    digitalWrite(LED_PIN, ledStatus);
-    mqtt.publish(topicLedStatus, ledStatus ? "1" : "0");
-  }
 }
 
 boolean mqttConnect() {
-  Serial.print("Connecting to ");
+  Serial.print("Mqtt connecting to ");
   Serial.print(broker);
+  const char* client_name = "Aquifera-ESP32-Client";
 
   // Connect to MQTT Broker without authentication
   // boolean status = mqtt.connect("Aquifera-ESP32-Client");
 
   // Or, if you want to authenticate MQTT:
-  boolean status = mqtt.connect("Aquifera-ESP32-Client", mqtt_user, mqtt_pass);
+  boolean status = mqtt.connect(client_name, mqtt_user, mqtt_pass);
 
   if (status == false) {
     Serial.println(" fail");
     return false;
   }
   Serial.println(" success");
-  mqtt.publish(topicInit, "GsmClientTest started");
-  mqtt.subscribe(topicLed);
+  
+  // subscribe to topic
+  mqtt.subscribe(topic_test);
+  mqtt.subscribe(topic_test_2);
+  mqtt.subscribe(topic_commands);
+  mqtt.subscribe(topic_flow_sensor);
+  mqtt.subscribe(topic_temp_sensor);
+  
+  Serial.print("Subscribed topic [");
+  Serial.print(topic_test);
+  Serial.println("]");
+  Serial.print("Subscribed topic [");
+  Serial.print(topic_test_2);
+  Serial.println("]");
+  Serial.print("Subscribed topic [");
+  Serial.print(topic_commands);
+  Serial.println("]");
+  Serial.print("Subscribed topic [");
+  Serial.print(topic_flow_sensor);
+  Serial.println("]");
+  Serial.print("Subscribed topic [");
+  Serial.print(topic_temp_sensor);
+  Serial.println("]");
+  
+  // publish to topic
+  publish_message(topic_test_2, "Aquifera-ESP32-Client started");
+  
   return mqtt.connected();
+}
+
+void publish_message(const char* topic, const char* payload) {
+  mqtt.publish(topic, payload);
+  Serial.print("Published ["); 
+  Serial.print(topic);
+  Serial.print("]: ");
+  Serial.println(payload);
 }
