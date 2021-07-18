@@ -6,8 +6,8 @@
 //======================================================================//
 // CONFIGURATIONS
 
-// #define CELLULAR_ONLY // uncomment if want to use SIM800L as connector to internet
-#define WIFI_ONLY // uncomment if want to use WiFi as connector to internet
+#define CELLULAR_ONLY // uncomment if want to use SIM800L as connector to internet
+// #define WIFI_ONLY // uncomment if want to use WiFi as connector to internet
 
 // ***** TINY GSM CONFIGURATIONS *****
 // See all AT commands, if wanted
@@ -56,13 +56,15 @@ SoftwareSerial SerialSim800L(10, 9); // RX, TX
 
 #include <TinyGsmClient.h>
 
-#ifdef DUMP_AT_COMMANDS
-  #include <StreamDebugger.h>
-  StreamDebugger debugger(SerialSim800L, Serial);
-  TinyGsm modem(debugger);
-#else
-TinyGsm modem(SerialSim800L);
-#endif
+#define SerialSim Serial1
+
+// #ifdef DUMP_AT_COMMANDS
+//   #include <StreamDebugger.h>
+//   StreamDebugger debugger(SerialSim800L, Serial);
+//   TinyGsm modem(debugger);
+// #else
+// TinyGsm modem(SerialSim800L);
+// #endif
 
 // ***** WIFI & MQTT CONFIGURATIONS *****
 const char* topic_commands = "waterbox/W0001/commands"; // used to retrieve actions that is needed to be done by Waterbox
@@ -85,6 +87,7 @@ const char* topic_test_2 = "waterbox/W0001/test-2";
 
 // ****** GLOBAL VARIABLES *****
 #ifdef CELLULAR_ONLY
+  TinyGsm modem(SerialSim);
   TinyGsmClient client(modem);
 #elif defined(WIFI_ONLY)
   #include <WiFi.h>
@@ -101,6 +104,7 @@ int ledStatus = LOW;
 //======================================================================//
 // Prototypes
 
+void modem_power_on();
 void setup_tinygsm();
 void setup_wifi();
 void setup_mqtt();
@@ -113,7 +117,7 @@ void publish_message(const char*, const char*);
 
 void setup() {
   // Set console baud rate
-  Serial.begin(9600);
+  Serial.begin(115200);
   delay(10);
 
   pinMode(LED_PIN, OUTPUT);
@@ -127,6 +131,9 @@ void setup() {
 #endif
   setup_mqtt();
 }
+
+long lastSend = 0;
+int count = 0;
 
 void loop() {
   if (!mqtt.connected()) {
@@ -143,23 +150,67 @@ void loop() {
     return;
   }
 
+  if (millis() - lastSend > 3000) {
+    Serial.println("oke");
+    count++;
+    publish_message(topic_test, "Aquifera-ESP32-Client beat");
+    lastSend = millis();
+  }
+
   mqtt.loop();
 }
 
 //======================================================================//
 // Functions
-
 // TinyGSM
+// TTGO T-Call pins
+#define MODEM_RST            5
+#define MODEM_PWKEY          4
+#define MODEM_POWER_ON       23
+#define MODEM_TX             27
+#define MODEM_RX             26
+#define I2C_SDA              21
+#define I2C_SCL              22
+// BME280 pins
+#define I2C_SDA_2            18
+#define I2C_SCL_2            19
+
+void modem_power_on(){
+  pinMode(MODEM_PWKEY,OUTPUT);
+  pinMode(MODEM_RST,OUTPUT);
+  pinMode(MODEM_POWER_ON, OUTPUT);
+
+  digitalWrite(MODEM_PWKEY,HIGH);
+  digitalWrite(MODEM_RST,HIGH);
+  digitalWrite(MODEM_POWER_ON,HIGH);
+
+  // power on the simcom
+  delay(1000);
+  digitalWrite(MODEM_PWKEY,LOW);
+  delay(1000);
+  digitalWrite(MODEM_PWKEY,HIGH);
+  delay(1000);
+}
+
 void setup_tinygsm() {
+  delay(1000);
+
   // Set GSM module baud rate
-  TinyGsmAutoBaud(SerialSim800L, GSM_AUTOBAUD_MIN, GSM_AUTOBAUD_MAX);
-  // SerialSim800L.begin(9600);
+  // TinyGsmAutoBaud(SerialSim800L, GSM_AUTOBAUD_MIN, GSM_AUTOBAUD_MAX);
+  // SerialSim800L.begin(28800);
+  SerialSim.begin(115200, SERIAL_8N1, MODEM_RX, MODEM_TX);
   delay(6000);
+  modem_power_on();
 
   // Restart takes quite some time
   // To skip it, call init() instead of restart()
   Serial.println("Initializing modem...");
-  modem.restart();
+  if (!modem.restart()) {
+      Serial.println(" fail");
+    }
+    else{
+      Serial.println(" success");      
+    }
   // modem.init();
 
   String modemInfo = modem.getModemInfo();
@@ -189,17 +240,17 @@ void setup_tinygsm() {
   modem.gprsConnect(apn, gprsUser, gprsPass);
 #endif
 
-  Serial.print("Waiting for network...");
-  if (!modem.waitForNetwork()) {
-    Serial.println(" fail");
-    delay(10000);
-    return;
-  }
-  Serial.println(" success");
+  // Serial.print("Waiting for network...");
+  // if (!modem.waitForNetwork()) {
+  //   Serial.println(" fail");
+  //   delay(10000);
+  //   return;
+  // }
+  // Serial.println(" success");
 
-  if (modem.isNetworkConnected()) {
-    Serial.println("Network connected");
-  }
+  // if (modem.isNetworkConnected()) {
+  //   Serial.println("Network connected");
+  // }
 
 #if TINY_GSM_USE_GPRS
   // GPRS connection parameters are usually set after network registration
@@ -220,6 +271,7 @@ void setup_tinygsm() {
 
 // WiFi
 void setup_wifi() {
+  #ifdef WIFI_ONLY
   WiFi.begin(wifiSSID, wifiPass);
  
   while (WiFi.status() != WL_CONNECTED) {
@@ -228,6 +280,7 @@ void setup_wifi() {
     Serial.println(wifiSSID);
   }
   Serial.println("WiFi Connected!");
+  #endif
 }
 
 // MQTT
@@ -236,7 +289,7 @@ void setup_mqtt() {
   Serial.print("Setup mqtt");
   mqtt.setServer(broker, 1883);
   mqtt.setCallback(mqttCallback);
-  Serial.println(" ...done");
+  Serial.println(mqttConnect() ? " ...done" : " ...failed");
 }
 
 void mqttCallback(char* topic, byte* payload, unsigned int len) {
