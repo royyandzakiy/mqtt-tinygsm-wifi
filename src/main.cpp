@@ -162,18 +162,34 @@ void loop() {
 
 //======================================================================//
 // Functions
+
 // TinyGSM
-// TTGO T-Call pins
-#define MODEM_RST            5
-#define MODEM_PWKEY          4
-#define MODEM_POWER_ON       23
-#define MODEM_TX             27
-#define MODEM_RX             26
-#define I2C_SDA              21
-#define I2C_SCL              22
-// BME280 pins
-#define I2C_SDA_2            18
-#define I2C_SCL_2            19
+#define BOARD_TCALL
+// #define BOARD_SIM800L
+// #define BOARD_CUSTOM
+
+#ifdef BOARD_TCALL
+  // TTGO T-Call pins
+  #define MODEM_RST            5
+  #define MODEM_PWKEY          4
+  #define MODEM_POWER_ON       23
+  #define MODEM_TX             27
+  #define MODEM_RX             26
+#elif defined(BOARD_SIM800L)
+  // SIM800L directly connected
+  #define MODEM_RST            5
+  #define MODEM_PWKEY          4
+  #define MODEM_POWER_ON       23
+  #define MODEM_TX             27
+  #define MODEM_RX             26
+#elif defined(BOARD_CUSTOM)
+  // Custom Pins Here...
+  #define MODEM_RST            99
+  #define MODEM_PWKEY          99
+  #define MODEM_POWER_ON       99
+  #define MODEM_TX             99
+  #define MODEM_RX             99
+#endif
 
 void modem_power_on(){
   pinMode(MODEM_PWKEY,OUTPUT);
