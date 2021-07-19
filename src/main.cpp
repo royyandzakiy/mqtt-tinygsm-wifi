@@ -9,6 +9,37 @@
 #define CELLULAR_ONLY // uncomment if want to use SIM800L as connector to internet
 // #define WIFI_ONLY // uncomment if want to use WiFi as connector to internet
 
+// TinyGSM
+// #define BOARD_TCALL // successfully working, using emnify (tested: 19-jul-2021)
+#define BOARD_SIM800L
+// #define BOARD_CUSTOM
+
+#ifdef BOARD_TCALL
+  // TTGO T-Call pins
+  #define MODEM_RST            5
+  #define MODEM_PWKEY          4
+  #define MODEM_POWER_ON       23
+  #define MODEM_TX             27
+  #define MODEM_RX             26
+#elif defined(BOARD_SIM800L)
+  // SIM800L directly connected
+  #define MODEM_RST            21
+  #define MODEM_TX             19
+  #define MODEM_RX             18
+  // #define MODEM_TX             18
+  // #define MODEM_RX             19
+  // #define MODEM_TX             16
+  // #define MODEM_RX             17
+  // #define MODEM_PWKEY          4
+#elif defined(BOARD_CUSTOM)
+  // Custom Pins Here...
+  #define MODEM_RST            99
+  #define MODEM_PWKEY          99
+  #define MODEM_POWER_ON       99
+  #define MODEM_TX             99
+  #define MODEM_RX             99
+#endif
+
 // ***** TINY GSM CONFIGURATIONS *****
 // See all AT commands, if wanted
 #define DUMP_AT_COMMANDS
@@ -20,7 +51,7 @@
 #define TINY_GSM_MODEM_SIM800
 
 // Software Serial to SIM800L Modem
-SoftwareSerial SerialSim800L(10, 9); // RX, TX
+SoftwareSerial SerialSim800L(MODEM_RX, MODEM_TX); // RX, TX
 
 // Your GPRS credentials, if any
 #ifndef CREDENTIALS_H
@@ -56,7 +87,9 @@ SoftwareSerial SerialSim800L(10, 9); // RX, TX
 
 #include <TinyGsmClient.h>
 
-#define SerialSim Serial1
+// #define SerialSim Serial1
+// #define SerialSim Serial2
+#define SerialSim SerialSim800L
 
 // #ifdef DUMP_AT_COMMANDS
 //   #include <StreamDebugger.h>
@@ -87,6 +120,7 @@ const char* topic_test_2 = "waterbox/W0001/test-2";
 
 // ****** GLOBAL VARIABLES *****
 #ifdef CELLULAR_ONLY
+  // TinyGsm modem(SerialSim800L);
   TinyGsm modem(SerialSim);
   TinyGsmClient client(modem);
 #elif defined(WIFI_ONLY)
@@ -163,71 +197,75 @@ void loop() {
 //======================================================================//
 // Functions
 
-// TinyGSM
-#define BOARD_TCALL
-// #define BOARD_SIM800L
-// #define BOARD_CUSTOM
-
-#ifdef BOARD_TCALL
-  // TTGO T-Call pins
-  #define MODEM_RST            5
-  #define MODEM_PWKEY          4
-  #define MODEM_POWER_ON       23
-  #define MODEM_TX             27
-  #define MODEM_RX             26
-#elif defined(BOARD_SIM800L)
-  // SIM800L directly connected
-  #define MODEM_RST            5
-  #define MODEM_PWKEY          4
-  #define MODEM_POWER_ON       23
-  #define MODEM_TX             27
-  #define MODEM_RX             26
-#elif defined(BOARD_CUSTOM)
-  // Custom Pins Here...
-  #define MODEM_RST            99
-  #define MODEM_PWKEY          99
-  #define MODEM_POWER_ON       99
-  #define MODEM_TX             99
-  #define MODEM_RX             99
-#endif
-
 void modem_power_on(){
-  pinMode(MODEM_PWKEY,OUTPUT);
-  pinMode(MODEM_RST,OUTPUT);
-  pinMode(MODEM_POWER_ON, OUTPUT);
+  Serial.println("Resetting Modem...");
+  #ifdef BOARD_SIM800L
+    // pinMode(MODEM_PWKEY,OUTPUT);
+    pinMode(MODEM_RST,OUTPUT);
+    // pinMode(MODEM_POWER_ON, OUTPUT);
 
-  digitalWrite(MODEM_PWKEY,HIGH);
-  digitalWrite(MODEM_RST,HIGH);
-  digitalWrite(MODEM_POWER_ON,HIGH);
+    // digitalWrite(MODEM_PWKEY,HIGH);
+    digitalWrite(MODEM_RST,HIGH);
+    // digitalWrite(MODEM_POWER_ON,HIGH);
 
-  // power on the simcom
-  delay(1000);
-  digitalWrite(MODEM_PWKEY,LOW);
-  delay(1000);
-  digitalWrite(MODEM_PWKEY,HIGH);
-  delay(1000);
+    // power on the simcom
+    delay(3000);
+    digitalWrite(MODEM_RST,LOW);
+    delay(3000);
+    digitalWrite(MODEM_RST,HIGH);
+
+    // digitalWrite(MODEM_PWKEY,LOW);
+    // delay(1000);
+    // digitalWrite(MODEM_PWKEY,HIGH);
+    delay(3000);
+  #elif defined(BOARD_TCALL)
+    pinMode(MODEM_PWKEY,OUTPUT);
+    pinMode(MODEM_RST,OUTPUT);
+    pinMode(MODEM_POWER_ON, OUTPUT);
+
+    digitalWrite(MODEM_PWKEY,HIGH);
+    digitalWrite(MODEM_RST,HIGH);
+    digitalWrite(MODEM_POWER_ON,HIGH);
+
+    // power on the simcom
+    delay(1000);
+    digitalWrite(MODEM_PWKEY,LOW);
+    delay(1000);
+    digitalWrite(MODEM_PWKEY,HIGH);
+    delay(1000);
+  #endif
 }
 
 void setup_tinygsm() {
+  #ifdef CELLULAR_ONLY
   delay(1000);
 
-  // Set GSM module baud rate
-  // TinyGsmAutoBaud(SerialSim800L, GSM_AUTOBAUD_MIN, GSM_AUTOBAUD_MAX);
-  // SerialSim800L.begin(28800);
-  SerialSim.begin(115200, SERIAL_8N1, MODEM_RX, MODEM_TX);
-  delay(6000);
+  // SerialSim.begin(115200, SWSERIAL_8N1, MODEM_RX, MODEM_TX);
+  // SerialSim.begin(9600, SWSERIAL_8N1, MODEM_RX, MODEM_TX);
+  SerialSim.begin(115200); // Successfully working uwing raw SIM800L + ESP32
+  // SerialSim.begin(9600);
+  // SerialSim.begin(115200, SERIAL_8N1, MODEM_RX, MODEM_TX); // successfully working using LILYGO (tested: 19-jul-2021)
+  delay(3000);
   modem_power_on();
+
+  // Lower baud rate of the modem.
+  // This is highly practical for Uno board, since SoftwareSerial there
+  // works too slow to receive a modem data.
+
+  SerialSim.write("AT+IPR=9600\r\n");
+  SerialSim.end();
+  SerialSim.begin(9600);
 
   // Restart takes quite some time
   // To skip it, call init() instead of restart()
   Serial.println("Initializing modem...");
+  // if (!modem.init()) {
   if (!modem.restart()) {
       Serial.println(" fail");
     }
     else{
       Serial.println(" success");      
     }
-  // modem.init();
 
   String modemInfo = modem.getModemInfo();
   Serial.print("Modem Info: ");
@@ -272,7 +310,8 @@ void setup_tinygsm() {
   // GPRS connection parameters are usually set after network registration
     Serial.print(F("Connecting to "));
     Serial.print(apn);
-    if (!modem.gprsConnect(apn, gprsUser, gprsPass)) {
+    // if (!modem.gprsConnect(apn, gprsUser, gprsPass)) {
+    if (!modem.gprsConnect(apn)) {
       Serial.println(" fail");
       delay(10000);
       return;
@@ -282,6 +321,7 @@ void setup_tinygsm() {
   if (modem.isGprsConnected()) {
     Serial.println("GPRS connected");
   }
+#endif
 #endif
 }
 
@@ -302,7 +342,7 @@ void setup_wifi() {
 // MQTT
 void setup_mqtt() {
   // MQTT Broker setup
-  Serial.print("Setup mqtt");
+  Serial.println("Setup mqtt");
   mqtt.setServer(broker, 1883);
   mqtt.setCallback(mqttCallback);
   Serial.println(mqttConnect() ? " ...done" : " ...failed");
@@ -357,7 +397,7 @@ boolean mqttConnect() {
   Serial.println("]");
   
   // publish to topic
-  publish_message(topic_test_2, "Aquifera-ESP32-Client started");
+  publish_message(topic_test, "Aquifera-ESP32-Client started");
   
   return mqtt.connected();
 }
